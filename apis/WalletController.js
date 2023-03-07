@@ -57,7 +57,8 @@ const deposit = async (req, res, next) => {
   try {
     let userId = req.headers.userid
     const { amount } = req.body
-    if (!amount) throw new Error('please add amount')
+    if (!amount || amount < 0) throw new Error('please add valid amount')
+
     const Data = await Wallet.findOne({ user_id: userId })
 
     const updateData = await Wallet.findByIdAndUpdate(
@@ -90,7 +91,7 @@ const withdraw = async (req, res, next) => {
     const userId = req.headers.userid
     amount = req.body.amount
 
-    if (!amount) {
+    if (!amount || amount < 0) {
       return res.status(400).send({ message: 'Please  add valid amount' })
     }
 
