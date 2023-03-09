@@ -14,6 +14,10 @@ const adminSchema = new Schema({
   password: {
     type: String,
   },
+  // role: {
+  //   type: Number,
+  //   default: 1,
+  // },
 })
 
 adminSchema.pre('save', async function (next) {

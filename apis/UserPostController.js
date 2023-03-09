@@ -10,7 +10,7 @@ const multer = require('multer')
 const register = async (req, res, next) => {
   try {
     const { email, name, password } = req.body
-    console.log(email, name, password)
+
     if (!email || !name || !password) {
       throw new Error('Please add data or mandatory field')
     }
@@ -88,14 +88,11 @@ const verifyToken = async (req, res, next) => {
   if (typeof bearerHeader !== 'undefined') {
     const bearer = bearerHeader.split(' ')
     const token = bearer[1]
-    // console.log('token', token)
 
     jwt.verify(token, secretKey, (err, authData) => {
       if (err) {
         res.json({ message: 'Invalidate token' + err.message })
       } else {
-        // console.log(authData)
-        // console.log('verified userId', authData.usrId)
         req.headers.userid = authData.usrId
         next()
       }
