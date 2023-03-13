@@ -6,7 +6,7 @@ const warehouseSchema = new Schema(
     name: { type: String },
     capacity: { type: Number },
     address: { type: String },
-    productId: { type: mongoose.Types.ObjectId, ref: 'Product' },
+    // productId: { type: mongoose.Types.ObjectId, ref: 'Product' },
   },
   { timestamps: true },
 )
