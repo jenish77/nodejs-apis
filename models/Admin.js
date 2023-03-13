@@ -2,23 +2,22 @@ const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 const bcrypt = require('bcrypt')
 
-const adminSchema = new Schema({
-  name: {
-    type: String,
+const adminSchema = new Schema(
+  {
+    name: {
+      type: String,
+    },
+    email: {
+      type: String,
+      unique: true,
+      required: true,
+    },
+    password: {
+      type: String,
+    },
   },
-  email: {
-    type: String,
-    unique: true,
-    required: true,
-  },
-  password: {
-    type: String,
-  },
-  // role: {
-  //   type: Number,
-  //   default: 1,
-  // },
-})
+  { timestamps: true },
+)
 
 adminSchema.pre('save', async function (next) {
   try {

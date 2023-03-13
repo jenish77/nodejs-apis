@@ -9,6 +9,7 @@ const productSchema = new Schema(
     description: { type: String },
     modelId: { type: String },
     categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
+    quantity: { type: Number },
     image: {
       type: String,
       get(image) {
@@ -20,6 +21,7 @@ const productSchema = new Schema(
       },
     },
   },
+  { timestamps: true },
   { toObject: { getters: true }, toJSON: { getters: true } },
 )
 

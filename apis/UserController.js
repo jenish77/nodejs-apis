@@ -89,9 +89,6 @@ const login = async (req, res, next) => {
     const checkEmail = await Employee.findOne({ email: email })
     if (!checkEmail) throw new Error('email is not register with db')
 
-    // const vPassword = bcrypt.compare(password, checkEmail.password)
-    // if (!vPassword) throw new Error('password not matched!')
-
     if (!(email && (await bcrypt.compare(password, checkEmail.password)))) {
       res.json({ message: 'please enter valid email and password' })
     }
@@ -99,7 +96,7 @@ const login = async (req, res, next) => {
     jwt.sign(
       { userId: checkEmail._id.toString() },
       secretKey,
-      { expiresIn: '15m' },
+      { expiresIn: '1h' },
       (err, token) => {
         if (err) throw new Error('something went wrong')
         if (token) {
@@ -127,7 +124,7 @@ const verifyToken = (req, res, next) => {
       if (err) {
         res.json({ message: 'Inavlidate token' + err.message })
       } else {
-        console.log('userId', authData.userId)
+        // console.log('userId', authData.userId)
         req.headers.userid = authData.userId //-------IMP-----
         next()
       }

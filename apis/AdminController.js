@@ -32,12 +32,15 @@ const register = async (req, res, next) => {
 }
 
 //check admin
-// const isAdmin = async (req, res, next) => {
-//   if (req.user.role === 0) {
-//     return next(new ErrorResponse('Access denied, you must be an admin', 401))
-//   }
-//   next()
-// }
+const isAdmin = async (req, res, next) => {
+  if (req.headers.role === 'admin') {
+    // console.log(req.headers.role)
+    next()
+  } else {
+    console.log()
+    res.status(403).send({ message: 'Access denied, user must be an admin' })
+  }
+}
 
 const login = async (req, res, next) => {
   const { email, password } = req.body
@@ -52,9 +55,9 @@ const login = async (req, res, next) => {
   }
 
   jwt.sign(
-    { userId: checkEmail._id.toString() },
+    { userId: checkEmail._id.toString(), role: 'admin' },
     'secreet',
-    { expiresIn: '1h' },
+    { expiresIn: '2h' },
     (err, token) => {
       if (err) throw new Error('something went wrong')
       if (token) {
@@ -72,9 +75,15 @@ const verifyToken = (req, res, next) => {
 
     jwt.verify(token, 'secreet', (err, authData) => {
       if (err) {
-        res.json({ message: 'Invalidate token-' + err.message })
+        res.json({
+          message: 'Unauthorize Access! ' + err.message,
+        })
+        // next()
       } else {
         req.headers.userid = authData.userId
+        req.headers.role = authData.role
+
+        // console.log(authData.role)
         next()
       }
     })
@@ -106,154 +115,154 @@ const destroy = async (req, res, next) => {
 }
 
 // product category
-const category = async (req, res, next) => {
-  try {
-    const { name } = req.body
-    const categorydata = await Category.findOne({ name: name })
-    if (!categorydata) {
-      let category = new Category({
-        name: req.body.name,
-        status: req.body.status,
-      })
-      await category.save()
-      res.json({ message: 'category added successfully' })
-    } else {
-      res.json({ message: 'already added this category' })
-    }
-  } catch (error) {
-    return res.json({ message: error.message }).status(403)
-  }
-}
+// const category = async (req, res, next) => {
+//   try {
+//     const { name } = req.body
+//     const categorydata = await Category.findOne({ name: name })
+//     if (!categorydata) {
+//       let category = new Category({
+//         name: req.body.name,
+//         status: req.body.status,
+//       })
+//       await category.save()
+//       res.json({ message: 'category added successfully' })
+//     } else {
+//       res.json({ message: 'already added this category' })
+//     }
+//   } catch (error) {
+//     return res.json({ message: error.message }).status(403)
+//   }
+// }
 
-//upload image,
+// //upload image,
 
-const upload = async (req, res, next) => {
-  uploads(req, res, (err) => {
-    if (err) {
-      console.log(err)
-    } else {
-      const newImage = new Image({
-        name: req.body.name,
-        image: {
-          data: req.file.filename,
-          contentType: 'image/png',
-        },
-      })
+// const upload = async (req, res, next) => {
+//   uploads(req, res, (err) => {
+//     if (err) {
+//       console.log(err)
+//     } else {
+//       const newImage = new Image({
+//         name: req.body.name,
+//         image: {
+//           data: req.file.filename,
+//           contentType: 'image/png',
+//         },
+//       })
 
-      let obj = {
-        imageurl: `http://localhost:3000/image/${req.file.filename}`,
-        image: req.file.filename,
-      }
+//       let obj = {
+//         imageurl: `http://localhost:3000/image/${req.file.filename}`,
+//         image: req.file.filename,
+//       }
 
-      newImage
-        .save()
-        .then(() => res.json(obj))
-        .catch((err) => res.send({ err }))
-    }
-  })
-}
+//       newImage
+//         .save()
+//         .then(() => res.json(obj))
+//         .catch((err) => res.send({ err }))
+//     }
+//   })
+// }
 
-const Storage = multer.diskStorage({
-  destination: 'public/uploads',
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + '_' + file.originalname)
-  },
-})
+// const Storage = multer.diskStorage({
+//   destination: 'public/uploads',
+//   filename: (req, file, cb) => {
+//     cb(null, Date.now() + '_' + file.originalname)
+//   },
+// })
 
-const uploads = multer({
-  storage: Storage,
-}).single('testImage')
-//-----
-const express = require('express')
-const appp = express()
-appp.use('/image', express.static('public/uploads/'))
-//============
+// const uploads = multer({
+//   storage: Storage,
+// }).single('testImage')
+// //-----
+// const express = require('express')
+// const appp = express()
+// appp.use('/image', express.static('public/uploads/'))
+// //============
 
-// create product
-const product = async (req, res, next) => {
-  try {
-    const category = req.params.id
-    const { name, sku, price, modelId, description, image } = req.body
+// // create product
+// const product = async (req, res, next) => {
+//   try {
+//     const category = req.params.id
+//     const { name, sku, price, modelId, description, image, quantity } = req.body
 
-    if (!name || !sku || !price || !modelId || !description)
-      throw new Error('please add mandatory feild')
+//     if (!name || !sku || !price || !modelId || !description)
+//       throw new Error('please add mandatory feild')
 
-    let prod = await Product.findOne({ name: name })
-    if (prod) {
-      res.json({ message: 'product already added' })
-    } else {
-      let product = new Product({
-        name: name,
-        sku: sku,
-        price: price,
-        categoryId: category,
-        modelId: modelId,
-        description: description,
-        image: image,
-      })
-      await product.save()
-      res.json({ message: 'product added successfully' })
-    }
-  } catch (error) {
-    return res.json({ message: error.message }).status(403)
-  }
-}
+//     let prod = await Product.findOne({ sku: sku })
+//     if (prod) {
+//       res.json({ message: 'product already added' })
+//     } else {
+//       let product = new Product({
+//         name: name,
+//         sku: sku,
+//         price: price,
+//         quantity: quantity,
+//         categoryId: category,
+//         modelId: modelId,
+//         description: description,
+//         image: image,
+//       })
+//       await product.save()
+//       res.json({ message: 'product added successfully' })
+//     }
+//   } catch (error) {
+//     return res.json({ message: error.message }).status(403)
+//   }
+// }
 
-//get product
+// //get product
 
-const getProduct = async (req, res, next) => {
-  const product = await Product.find()
-  res.send(product)
-}
+// const getProduct = async (req, res, next) => {
+//   const { page = 1, limit = 10 } = req.query
+//   const product = await Product.find()
+//     .limit(limit * page)
+//     .skip((page - 1) * limit)
+//     .sort({ createdAt: -1 })
+//   res.send(product)
+// }
 
-// update product
-const productUpdate = async (req, res, next) => {
-  const id = req.params.id
-  console.log(id)
+// // update product
+// const productUpdate = async (req, res, next) => {
+//   const id = req.params.id
 
-  const { name, description, sku } = req.body
+//   const { name, description, sku } = req.body
 
-  if (!name || !description || !sku)
-    throw new Error('please add required field')
+//   if (!name || !description || !sku)
+//     throw new Error('please add required field')
 
-  let updateData = {
-    name: name,
-    description: description,
-    sku: sku,
-  }
+//   let updateData = {
+//     name: name,
+//     description: description,
+//     sku: sku,
+//   }
 
-  try {
-    const update = await Product.findByIdAndUpdate(id, {
-      $set: updateData,
-    })
-    res.json({ message: 'product updated successfully' })
-  } catch (error) {
-    return res.json({ message: error.message }).status(403)
-  }
-}
+//   try {
+//     const update = await Product.findByIdAndUpdate(id, {
+//       $set: updateData,
+//     })
+//     res.json({ message: 'product updated successfully' })
+//   } catch (error) {
+//     return res.json({ message: error.message }).status(403)
+//   }
+// }
 
-//delete product
-const productDelete = async (req, res, next) => {
-  try {
-    const pId = req.params.id
-    const remove = await Product.findByIdAndRemove(pId)
-    res.json({ message: 'delete successfully' })
-  } catch (error) {
-    return res.json({ message: error.message })
-  }
-}
+// //delete product
+// const productDelete = async (req, res, next) => {
+//   try {
+//     const pId = req.params.id
+//     const remove = await Product.findByIdAndRemove(pId)
+//     res.json({ message: 'delete successfully' })
+//   } catch (error) {
+//     return res.json({ message: error.message })
+//   }
+// }
+
+//
 
 module.exports = {
   register,
   login,
   verifyToken,
-  // isAdmin,
+  isAdmin,
   show,
   destroy,
-  category,
-  upload,
-  product,
-  getProduct,
-  productUpdate,
-  productDelete,
 }

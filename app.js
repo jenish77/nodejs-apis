@@ -12,12 +12,15 @@ const userRoute = require('./routes/user')
 const postRoute = require('./routes/post')
 const walletRoute = require('./routes/wallet')
 const adminRoute = require('./routes/admin')
+const productRoute = require('./routes/Product')
+const WarehouseRoute = require('./routes/Warehouse')
 
 app.use('/api/user', userRoute)
 app.use('/api/post', postRoute)
 app.use('/api/wallet', walletRoute)
 app.use('/api/admin', adminRoute)
-// app.use('/api/product')
+app.use('/api/product', productRoute)
+app.use('/api/warehouse', WarehouseRoute)
 
 app.use('/image', express.static('public/uploads/'))
 
