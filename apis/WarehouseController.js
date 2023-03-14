@@ -2,8 +2,9 @@ const { default: mongoose } = require('mongoose')
 const Product = require('../models/Product')
 const Warehouse = require('../models/Warehouse')
 const WarehouseProduct = require('../models/WarehouseProduct')
-// const { update, update } = require('./UserController')
+const nodemailer = require('nodemailer')
 
+// warehouse register
 const warehouseRegister = async (req, res, next) => {
   const { name, capacity, address } = req.body
 
@@ -24,11 +25,21 @@ const warehouseRegister = async (req, res, next) => {
   }
 }
 
+// add product in warehouse
+
 const warehouseProductadd = async (req, res, next) => {
+  //******************** */
+
+  //*************************** */
+
   const { quantity, productId } = req.body
   const wId = req.params.id
 
+  if (!quantity || quantity < 0) throw new Error('please add valid quantity')
+
   const Data = await Product.findOne({ _id: productId })
+
+  if (Data.quantity < quantity) throw new Error('Enter sufficient amount')
 
   const updateData = await Product.findByIdAndUpdate(
     { _id: productId },
@@ -96,6 +107,7 @@ const transfer = async (req, res, next) => {
   }
 }
 
+//get product from productid
 const getProduct = async (req, res, next) => {
   const pId = req.body.productId
 
@@ -133,9 +145,37 @@ const getProduct = async (req, res, next) => {
   res.send(product)
 }
 
+//get product from warehouseId
+const product = async (req, res, next) => {
+  const wId = req.body.warehouseId
+
+  const product = await WarehouseProduct.aggregate([
+    {
+      $match: { warehouseId: mongoose.Types.ObjectId(wId) },
+    },
+    {
+      $lookup: {
+        from: 'products',
+        localField: 'ProductId',
+        foreignField: '_id',
+        as: 'Data',
+      },
+    },
+    { $unwind: '$Data' },
+    {
+      $project: {
+        productName: '$Data.name',
+        quantity: 1,
+      },
+    },
+  ])
+  res.send(product)
+}
+
 module.exports = {
   warehouseRegister,
   warehouseProductadd,
   transfer,
   getProduct,
+  product,
 }

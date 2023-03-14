@@ -5,8 +5,11 @@ const Category = require('../models/Category')
 const Image = require('../models/image')
 const multer = require('multer')
 const jwt = require('jsonwebtoken')
+const nodemailer = require('nodemailer')
+
 const bcrypt = require('bcrypt')
 
+// create category for products
 const category = async (req, res, next) => {
   try {
     const { name } = req.body
@@ -27,7 +30,6 @@ const category = async (req, res, next) => {
 }
 
 //upload image,
-
 const upload = async (req, res, next) => {
   uploads(req, res, (err) => {
     if (err) {
@@ -72,9 +74,25 @@ appp.use('/image', express.static('public/uploads/'))
 
 // create product
 const product = async (req, res, next) => {
+  //**************
+  var transporter = nodemailer.createTransport({
+    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: {
+      user: 'jenishmaru2020@gmail.com',
+      pass: 'bpfbeycocmjfuwlm',
+    },
+  })
+
   try {
     const category = req.params.id
     const { name, sku, price, modelId, description, image, quantity } = req.body
+
+    let userId = req.headers.userid
+
+    const mail = await Admin.findById(userId).select('email')
 
     if (!name || !sku || !price || !modelId || !description)
       throw new Error('please add mandatory feild')
@@ -94,6 +112,22 @@ const product = async (req, res, next) => {
         image: image,
       })
       await product.save()
+      //---------------------
+      let mailOptions = {
+        from: 'jenishmaru2020@gmail.com',
+        to: mail,
+        subject: 'Product Created',
+        text: `you have upload product ${name} with ${quantity} Quantity. `,
+      }
+
+      transporter.sendMail(mailOptions, function (error, info) {
+        if (error) {
+          console.log(error)
+        } else {
+          console.log('Email sent: ' + info.response)
+        }
+      })
+      //--------------------
       res.json({ message: 'product added successfully' })
     }
   } catch (error) {
@@ -114,22 +148,22 @@ const getProduct = async (req, res, next) => {
 
 // update product
 const productUpdate = async (req, res, next) => {
-  const id = req.params.id
-  // console.log(id)
+  const pId = req.params.id
 
-  const { name, description, sku } = req.body
+  const { name, description, sku, quantity } = req.body
 
-  if (!name || !description || !sku)
+  if (!name || !description || !sku || !quantity)
     throw new Error('please add required field')
 
   let updateData = {
     name: name,
     description: description,
     sku: sku,
+    quantity: quantity,
   }
 
   try {
-    const update = await Product.findByIdAndUpdate(id, {
+    const update = await Product.findByIdAndUpdate(pId, {
       $set: updateData,
     })
     res.json({ message: 'product updated successfully' })

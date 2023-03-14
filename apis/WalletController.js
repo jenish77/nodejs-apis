@@ -183,6 +183,7 @@ const transaction = async (req, res, next) => {
   }
 }
 
+// transaction history
 const getTransaction = async (req, res, next) => {
   const userId = req.headers.userid
   const { page = 1, limit = 10 } = req.query
