@@ -151,7 +151,7 @@ const transaction = async (req, res, next) => {
     let rData = await Wallet.findByIdAndUpdate(
       { _id: Data._id },
       { $set: { amount: Data.amount + amount } },
-      { new: true },
+      // { new: true },
     )
     if (rData) {
       let sTransaction = new Transaction({

@@ -12,4 +12,8 @@ router.post(
 
 router.post('/add/:id', WarehouseController.warehouseProductadd)
 
+router.post('/transfer', WarehouseController.transfer)
+
+router.post('/getProduct', WarehouseController.getProduct)
+
 module.exports = router
