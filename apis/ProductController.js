@@ -70,11 +70,10 @@ const uploads = multer({
 const express = require('express')
 const appp = express()
 appp.use('/image', express.static('public/uploads/'))
-//============
+//===============================================================
 
 // create product
 const product = async (req, res, next) => {
-  //**************
   var transporter = nodemailer.createTransport({
     service: 'gmail',
     host: 'smtp.gmail.com',

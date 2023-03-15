@@ -1,4 +1,6 @@
 const { default: mongoose } = require('mongoose')
+const Admin = require('../models/Admin')
+const Order = require('../models/Order')
 const Product = require('../models/Product')
 const Warehouse = require('../models/Warehouse')
 const WarehouseProduct = require('../models/WarehouseProduct')
@@ -29,11 +31,29 @@ const warehouseRegister = async (req, res, next) => {
 
 const warehouseProductadd = async (req, res, next) => {
   //******************** */
-
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 456,
+    secure: true,
+    auth: {
+      user: 'jenishmaru2020@gmail.com',
+      pass: 'bpfbeycocmjfuwlm',
+    },
+  })
   //*************************** */
 
   const { quantity, productId } = req.body
   const wId = req.params.id
+  const userId = req.headers.userid
+
+  const mail = await Admin.findById(userId).select('email')
+  console.log('+++mail', mail)
+
+  const warehouse = await Warehouse.findOne({ _id: wId })
+
+  if (warehouse.capacity < quantity)
+    throw new Error('product quantity is exits the warehouse capacity')
 
   if (!quantity || quantity < 0) throw new Error('please add valid quantity')
 
@@ -51,6 +71,8 @@ const warehouseProductadd = async (req, res, next) => {
     ProductId: productId,
   })
 
+  // const warehouse = await Warehouse.findOne({ _id: wId })
+
   if (!warepro) {
     let addPW = new WarehouseProduct({
       warehouseId: wId,
@@ -58,12 +80,44 @@ const warehouseProductadd = async (req, res, next) => {
       quantity: quantity,
     })
     await addPW.save()
+
+    let mailOptions = {
+      from: 'jenishmaru2020@gmail.com',
+
+      to: mail,
+      subject: 'product added to Warehouse',
+      Text: `you have addead product ${Data.name} with ${quantity} Quantity in ${warehouse.address} this warehouse.`,
+    }
+
+    transporter.sendMail(mailOptions, function (error, info) {
+      if (error) {
+        console.log(error)
+      } else {
+        console.log('Email sent: ' + info.response)
+      }
+    })
+
     res.json({ message: 'product addead in warehouse.' })
   } else {
     const update = await WarehouseProduct.findByIdAndUpdate(
       { _id: warepro._id },
       { $set: { quantity: quantity + warepro.quantity } },
     )
+    let mailOptions = {
+      from: 'jenishmaru2020@gmail.com',
+      to: mail,
+      subject: 'product added to Warehouse',
+      Text: `you have addead product ${Data.name} with ${quantity} Quantity in ${warehouse.address} this warehouse.`,
+    }
+
+    transporter.sendMail(mailOptions, function (error, info) {
+      if (error) {
+        console.log(error)
+      } else {
+        console.log('Email sent: ' + info.response)
+      }
+    })
+
     res.json({ message: 'product addead in warehouse.' })
   }
 }
@@ -71,6 +125,21 @@ const warehouseProductadd = async (req, res, next) => {
 //transfer product from one warehouse to another
 const transfer = async (req, res, next) => {
   const { quantity, fromWaarehouseId, toWarehouseId, productId } = req.body
+
+  var transporter = nodemailer.createTransport({
+    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: {
+      user: 'jenishmaru2020@gmail.com',
+      pass: 'bpfbeycocmjfuwlm',
+    },
+  })
+
+  let userId = req.headers.userid
+
+  const mail = await Admin.findById(userId).select('email')
 
   if (!quantity || quantity < 0) throw new Error('please add valid quantity')
 
@@ -90,6 +159,18 @@ const transfer = async (req, res, next) => {
     { $set: { quantity: senderData.quantity - quantity } },
   )
 
+  const fromWarehouse = await Warehouse.findOne({
+    _id: fromWaarehouseId,
+  }).select('address')
+
+  const toWarehouse = await Warehouse.findOne({
+    _id: toWarehouseId,
+  }).select('address')
+
+  const product = await Product.findOne({
+    _id: productId,
+  }).select('name')
+
   if (!Data) {
     let data = new WarehouseProduct({
       warehouseId: toWarehouseId,
@@ -97,6 +178,23 @@ const transfer = async (req, res, next) => {
       quantity: quantity,
     })
     await data.save()
+
+    //------------------------
+    let mailOptions = {
+      from: 'jenishmaru2020@gmail.com',
+      to: mail,
+      subject: 'Product Created',
+      text: `you have transfer product ${product} with ${quantity} Quantity from ${fromWarehouse} to ${toWarehouse}. `,
+    }
+
+    transporter.sendMail(mailOptions, function (error, info) {
+      if (error) {
+        console.log(error)
+      } else {
+        console.log('Email sent: ' + info.response)
+      }
+    })
+    //-----------------------
     res.json({ message: 'product transfered in warehouse.' })
   } else {
     const newUpdate = await WarehouseProduct.findByIdAndUpdate(
