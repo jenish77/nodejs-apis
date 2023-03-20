@@ -5,18 +5,47 @@ const Comment = require('../models/Postcomment')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 const multer = require('multer')
+const Validator = require('validatorjs')
+
+const apiResponse = require('../response')
 
 // REGISTER API
+
 const register = async (req, res, next) => {
   try {
     const { email, name, password } = req.body
-
-    if (!email || !name || !password) {
-      throw new Error('Please add data or mandatory field')
+    const data = {
+      name: name,
+      email: email,
+      password: password,
     }
+    const rules = {
+      name: 'required|string',
+      email: 'required|string|email',
+      password: [
+        'required',
+        'regex:/^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{6,16}$/',
+      ],
+    }
+
+    const validator = new Validator(data, rules)
+
+    if (validator.fails()) {
+      let transformed = {}
+      Object.keys(validator.errors.errors).forEach(function (key, val) {
+        transformed[key] = validator.errors.errors[key][0]
+      })
+
+      const responseObject = {
+        statusCode: 'false',
+        message: transformed,
+      }
+      return res.json(apiResponse(responseObject))
+    }
+
     const eid = await User.findOne({ email: req.body.email })
     if (eid) {
-      res.json({ message: 'email already exist' })
+      res.json({ meseasage: 'email already exist' })
     } else {
       let user = new User({
         name: req.body.name,
@@ -24,12 +53,17 @@ const register = async (req, res, next) => {
         password: req.body.password,
       })
       const res_ = await user.save()
-      console.log(res_)
-      res.json({ message: 'New Data added succesfully' })
+
+      let obj = {
+        statusCode: 'true',
+        message: 'register successfully',
+      }
+
+      return res.json(apiResponse(obj))
     }
   } catch (error) {
     res.json({
-      message: 'error ocurred in add data-' + error.message,
+      message: 'HERE' + error.message,
     })
   }
 }
