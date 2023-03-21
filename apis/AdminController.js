@@ -6,13 +6,44 @@ const Image = require('../models/image')
 const multer = require('multer')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
+const Validator = require('validatorjs')
 
 const register = async (req, res, next) => {
   try {
     const { name, email, password } = req.body
-    if (!email || !password || !name) {
-      throw new Error('Please add mandatory field')
+
+    const data = {
+      name: name,
+      email: email,
+      password: password,
     }
+    const rules = {
+      name: 'required|string',
+      email: 'required|string|email',
+      password: [
+        'required',
+        'regex:/^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{6,16}$/',
+      ],
+    }
+    const validator = new Validator(data, rules)
+
+    if (validator.fails()) {
+      let transformed = {}
+
+      Object.keys(validator.errors.errors).forEach(function (key, val) {
+        transformed[key] = validator.errors.errors[key][0]
+      })
+
+      const responseObject = {
+        status: 'false',
+        message: transformed,
+      }
+      return res.json(apiResponse(responseObject))
+    }
+
+    // if (!email || !password || !name) {
+    //   throw new Error('Please add mandatory field')
+    // }
     const eid = await Admin.findOne({ email: email })
     if (eid) {
       res.json({ message: 'Email already exist' })
@@ -23,8 +54,14 @@ const register = async (req, res, next) => {
         password: req.body.password,
       })
       const res_ = await admin.save()
-      console.log(res_)
-      res.json({ message: 'admin succesfully registered' })
+      // console.log(res_)
+      let obj = {
+        status: 'true',
+        message: 'admin succesfully registered',
+      }
+
+      return res.json(apiResponse(obj))
+      // res.json({ message: 'admin succesfully registered' })
     }
   } catch (error) {
     res.json({ message: 'error occured in register admin-' + error.message })
@@ -44,14 +81,42 @@ const isAdmin = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   const { email, password } = req.body
-  if (!email || !password) {
-    throw new Error('email or password is required')
+
+  const data = {
+    email: email,
+    password: password,
   }
+  // console.log(password)
+  const rules = {
+    email: 'required|string|email',
+    password: 'required',
+  }
+
+  const validator = new Validator(data, rules)
+
+  if (validator.fails()) {
+    let transformed = {}
+    Object.keys(validator.errors.errors).forEach(function (key, val) {
+      transformed[key] = validator.errors.errors[key][0]
+    })
+    const responseObject = {
+      status: 'false',
+      message: transformed,
+    }
+    return res.json(apiResponse(responseObject))
+  }
+
+  // if (!email || !password) {
+  //   throw new Error('email or password is required')
+  // }
   const checkEmail = await Admin.findOne({ email: email })
-  if (!checkEmail) throw new Error('email is not register with db')
+  // if (!checkEmail) throw new Error('email is not register with db')
+  if (!checkEmail) {
+    return res.json({ message: 'email is not register with db ' })
+  }
 
   if (!(email && (await bcrypt.compare(password, checkEmail.password)))) {
-    res.json({ message: 'please enter valid email and password' })
+    return res.json({ message: 'please enter valid email and password' })
   }
 
   jwt.sign(
@@ -82,8 +147,6 @@ const verifyToken = (req, res, next) => {
       } else {
         req.headers.userid = authData.userId
         req.headers.role = authData.role
-
-        // console.log(authData.role)
         next()
       }
     })
@@ -113,150 +176,6 @@ const destroy = async (req, res, next) => {
   const data = await User.findByIdAndDelete(aid)
   res.json({ message: 'deleted' })
 }
-
-// product category
-// const category = async (req, res, next) => {
-//   try {
-//     const { name } = req.body
-//     const categorydata = await Category.findOne({ name: name })
-//     if (!categorydata) {
-//       let category = new Category({
-//         name: req.body.name,
-//         status: req.body.status,
-//       })
-//       await category.save()
-//       res.json({ message: 'category added successfully' })
-//     } else {
-//       res.json({ message: 'already added this category' })
-//     }
-//   } catch (error) {
-//     return res.json({ message: error.message }).status(403)
-//   }
-// }
-
-// //upload image,
-
-// const upload = async (req, res, next) => {
-//   uploads(req, res, (err) => {
-//     if (err) {
-//       console.log(err)
-//     } else {
-//       const newImage = new Image({
-//         name: req.body.name,
-//         image: {
-//           data: req.file.filename,
-//           contentType: 'image/png',
-//         },
-//       })
-
-//       let obj = {
-//         imageurl: `http://localhost:3000/image/${req.file.filename}`,
-//         image: req.file.filename,
-//       }
-
-//       newImage
-//         .save()
-//         .then(() => res.json(obj))
-//         .catch((err) => res.send({ err }))
-//     }
-//   })
-// }
-
-// const Storage = multer.diskStorage({
-//   destination: 'public/uploads',
-//   filename: (req, file, cb) => {
-//     cb(null, Date.now() + '_' + file.originalname)
-//   },
-// })
-
-// const uploads = multer({
-//   storage: Storage,
-// }).single('testImage')
-// //-----
-// const express = require('express')
-// const appp = express()
-// appp.use('/image', express.static('public/uploads/'))
-// //============
-
-// // create product
-// const product = async (req, res, next) => {
-//   try {
-//     const category = req.params.id
-//     const { name, sku, price, modelId, description, image, quantity } = req.body
-
-//     if (!name || !sku || !price || !modelId || !description)
-//       throw new Error('please add mandatory feild')
-
-//     let prod = await Product.findOne({ sku: sku })
-//     if (prod) {
-//       res.json({ message: 'product already added' })
-//     } else {
-//       let product = new Product({
-//         name: name,
-//         sku: sku,
-//         price: price,
-//         quantity: quantity,
-//         categoryId: category,
-//         modelId: modelId,
-//         description: description,
-//         image: image,
-//       })
-//       await product.save()
-//       res.json({ message: 'product added successfully' })
-//     }
-//   } catch (error) {
-//     return res.json({ message: error.message }).status(403)
-//   }
-// }
-
-// //get product
-
-// const getProduct = async (req, res, next) => {
-//   const { page = 1, limit = 10 } = req.query
-//   const product = await Product.find()
-//     .limit(limit * page)
-//     .skip((page - 1) * limit)
-//     .sort({ createdAt: -1 })
-//   res.send(product)
-// }
-
-// // update product
-// const productUpdate = async (req, res, next) => {
-//   const id = req.params.id
-
-//   const { name, description, sku } = req.body
-
-//   if (!name || !description || !sku)
-//     throw new Error('please add required field')
-
-//   let updateData = {
-//     name: name,
-//     description: description,
-//     sku: sku,
-//   }
-
-//   try {
-//     const update = await Product.findByIdAndUpdate(id, {
-//       $set: updateData,
-//     })
-//     res.json({ message: 'product updated successfully' })
-//   } catch (error) {
-//     return res.json({ message: error.message }).status(403)
-//   }
-// }
-
-// //delete product
-// const productDelete = async (req, res, next) => {
-//   try {
-//     const pId = req.params.id
-//     const remove = await Product.findByIdAndRemove(pId)
-//     res.json({ message: 'delete successfully' })
-//   } catch (error) {
-//     return res.json({ message: error.message })
-//   }
-// }
-
-//
 
 module.exports = {
   register,

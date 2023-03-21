@@ -11,7 +11,7 @@ router.post(
 )
 
 router.post(
-  '/:id',
+  '/add/:id',
   AdminController.verifyToken,
   AdminController.isAdmin,
   ProductCntroller.product,
@@ -24,7 +24,7 @@ router.put(
   ProductCntroller.productUpdate,
 )
 
-router.post(
+router.get(
   '/upload',
   AdminController.verifyToken,
   AdminController.isAdmin,
@@ -37,11 +37,11 @@ router.delete(
   ProductCntroller.productDelete,
 )
 
-router.get(
+router.post(
   '/getProduct',
   AdminController.verifyToken,
   AdminController.isAdmin,
-  ProductCntroller.getProduct,
+  ProductCntroller.getProducts,
 )
 
 module.exports = router

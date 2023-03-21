@@ -5,12 +5,39 @@ const Product = require('../models/Product')
 const Warehouse = require('../models/Warehouse')
 const WarehouseProduct = require('../models/WarehouseProduct')
 const nodemailer = require('nodemailer')
+const Validator = require('validatorjs')
+const apiResponse = require('../response')
 
 // warehouse register
 const warehouseRegister = async (req, res, next) => {
   const { name, capacity, address } = req.body
 
-  if (!name || !capacity || !address) throw new Error('add mandatory field')
+  const datas = {
+    name: name,
+    capacity: capacity,
+    address: address,
+  }
+  const rules = {
+    name: 'required|string',
+    capacity: 'required|integer',
+    address: 'required',
+  }
+
+  const validator = new Validator(datas, rules)
+
+  if (validator.fails()) {
+    let transformed = {}
+
+    Object.keys(validator.errors.errors).forEach(function (key, val) {
+      transformed[key] = validator.errors.errors[key][0]
+    })
+
+    const responseObject = {
+      status: 'false',
+      message: transformed,
+    }
+    return res.json(apiResponse(responseObject))
+  }
 
   let data = await Warehouse.findOne({ name: name })
 
@@ -21,41 +48,80 @@ const warehouseRegister = async (req, res, next) => {
       address: address,
     })
     await warehouse.save()
-    res.json({ message: 'warehouse added successfully' })
+    let obj = {
+      status: 'true',
+      message: 'warehouse added successfully',
+    }
+
+    return res.json(apiResponse(obj))
+    // res.json({ message: 'warehouse added successfully' })
   } else {
     res.json({ message: 'warehouse already exists' })
   }
 }
 
-// add product in warehouse
+// add product in warehouse========***************
 
 const warehouseProductadd = async (req, res, next) => {
   //******************** */
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    host: 'smtp.gmail.com',
-    port: 456,
-    secure: true,
-    auth: {
-      user: 'jenishmaru2020@gmail.com',
-      pass: 'bpfbeycocmjfuwlm',
-    },
-  })
+  // const transporter = nodemailer.createTransport({
+  //   service: 'gmail',
+  //   host: 'smtp.gmail.com',
+  //   port: 456,
+  //   secure: true,
+  //   auth: {
+  //     user: 'jenishmaru2020@gmail.com',
+  //     pass: 'bpfbeycocmjfuwlm',
+  //   },
+  // })
   //*************************** */
 
   const { quantity, productId } = req.body
   const wId = req.params.id
   const userId = req.headers.userid
 
-  const mail = await Admin.findById(userId).select('email')
-  console.log('+++mail', mail)
+  const data = {
+    quantity: quantity,
+    quantity: productId,
+  }
+  const rules = {
+    quantity: 'required|integer',
+    quantity: 'required',
+  }
+
+  const validator = new Validator(data, rules)
+
+  if (validator.fails()) {
+    let transformed = {}
+
+    Object.keys(validator.errors.errors).forEach(function (key, val) {
+      transformed[key] = validator.errors.errors[key][0]
+    })
+
+    const responseObject = {
+      status: 'false',
+      message: transformed,
+    }
+    return res.json(apiResponse(responseObject))
+  }
+
+  // const mail = await Admin.findById(userId).select('email')
+  // console.log('+++mail', mail)
 
   const warehouse = await Warehouse.findOne({ _id: wId })
 
-  if (warehouse.capacity < quantity)
-    throw new Error('product quantity is exits the warehouse capacity')
+  if (warehouse.capacity < quantity) {
+    res.json({ message: 'product quantity is exits the warehouse capacity' })
+    // throw new Error('product quantity is exits the warehouse capacity')
+  }
 
-  if (!quantity || quantity < 0) throw new Error('please add valid quantity')
+  if (quantity < 0) {
+    return res.json({
+      message:
+        'product quantity is exits the warehouse capacityplease add valid quantity',
+    })
+  }
+  // throw new Error('please add valid quantity')
 
   const Data = await Product.findOne({ _id: productId })
 
@@ -81,21 +147,21 @@ const warehouseProductadd = async (req, res, next) => {
     })
     await addPW.save()
 
-    let mailOptions = {
-      from: 'jenishmaru2020@gmail.com',
+    // let mailOptions = {
+    //   from: 'jenishmaru2020@gmail.com',
 
-      to: mail,
-      subject: 'product added to Warehouse',
-      Text: `you have addead product ${Data.name} with ${quantity} Quantity in ${warehouse.address} this warehouse.`,
-    }
+    //   to: mail,
+    //   subject: 'product added to Warehouse',
+    //   Text: `you have addead product ${Data.name} with ${quantity} Quantity in ${warehouse.address} this warehouse.`,
+    // }
 
-    transporter.sendMail(mailOptions, function (error, info) {
-      if (error) {
-        console.log(error)
-      } else {
-        console.log('Email sent: ' + info.response)
-      }
-    })
+    // transporter.sendMail(mailOptions, function (error, info) {
+    //   if (error) {
+    //     console.log(error)
+    //   } else {
+    //     console.log('Email sent: ' + info.response)
+    //   }
+    // })
 
     res.json({ message: 'product addead in warehouse.' })
   } else {
@@ -103,20 +169,20 @@ const warehouseProductadd = async (req, res, next) => {
       { _id: warepro._id },
       { $set: { quantity: quantity + warepro.quantity } },
     )
-    let mailOptions = {
-      from: 'jenishmaru2020@gmail.com',
-      to: mail,
-      subject: 'product added to Warehouse',
-      Text: `you have addead product ${Data.name} with ${quantity} Quantity in ${warehouse.address} this warehouse.`,
-    }
+    // let mailOptions = {
+    //   from: 'jenishmaru2020@gmail.com',
+    //   to: mail,
+    //   subject: 'product added to Warehouse',
+    //   Text: `you have addead product ${Data.name} with ${quantity} Quantity in ${warehouse.address} this warehouse.`,
+    // }
 
-    transporter.sendMail(mailOptions, function (error, info) {
-      if (error) {
-        console.log(error)
-      } else {
-        console.log('Email sent: ' + info.response)
-      }
-    })
+    // transporter.sendMail(mailOptions, function (error, info) {
+    //   if (error) {
+    //     console.log(error)
+    //   } else {
+    //     console.log('Email sent: ' + info.response)
+    //   }
+    // })
 
     res.json({ message: 'product addead in warehouse.' })
   }
@@ -126,22 +192,56 @@ const warehouseProductadd = async (req, res, next) => {
 const transfer = async (req, res, next) => {
   const { quantity, fromWaarehouseId, toWarehouseId, productId } = req.body
 
-  var transporter = nodemailer.createTransport({
-    service: 'gmail',
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: {
-      user: 'jenishmaru2020@gmail.com',
-      pass: 'bpfbeycocmjfuwlm',
-    },
-  })
+  const data = {
+    quantity: quantity,
+    fromWaarehouseId: fromWaarehouseId,
+    toWarehouseId: toWarehouseId,
+    productId: productId,
+  }
+  const rules = {
+    quantity: 'required|integer',
+    fromWaarehouseId: 'required',
+    toWarehouseId: 'required',
+    productId: 'required',
+  }
+
+  const validator = new Validator(data, rules)
+
+  if (validator.fails()) {
+    let transformed = {}
+
+    Object.keys(validator.errors.errors).forEach(function (key, val) {
+      transformed[key] = validator.errors.errors[key][0]
+    })
+
+    const responseObject = {
+      status: 'false',
+      message: transformed,
+    }
+    return res.json(apiResponse(responseObject))
+  }
+
+  // var transporter = nodemailer.createTransport({
+  //   service: 'gmail',
+  //   host: 'smtp.gmail.com',
+  //   port: 465,
+  //   secure: true,
+  //   auth: {
+  //     user: 'jenishmaru2020@gmail.com',
+  //     pass: 'bpfbeycocmjfuwlm',
+  //   },
+  // })
 
   let userId = req.headers.userid
 
-  const mail = await Admin.findById(userId).select('email')
+  // const mail = await Admin.findById(userId).select('email')
 
-  if (!quantity || quantity < 0) throw new Error('please add valid quantity')
+  if (quantity < 0) {
+    return res.json({
+      message: 'please add valid quantity',
+    })
+  }
+  // if (quantity < 0) throw new Error('please add valid quantity')
 
   const Data = await WarehouseProduct.findOne({
     warehouseId: toWarehouseId,
@@ -152,7 +252,10 @@ const transfer = async (req, res, next) => {
     warehouseId: fromWaarehouseId,
   })
 
-  if (senderData.quantity < quantity) throw new Error('Enter sufficient amount')
+  if (senderData.quantity < quantity) {
+    return res.json({ message: 'Enter sufficient amount' })
+  }
+  //  throw new Error('Enter sufficient amount')
 
   const update = await WarehouseProduct.findByIdAndUpdate(
     { _id: senderData._id },
@@ -180,28 +283,40 @@ const transfer = async (req, res, next) => {
     await data.save()
 
     //------------------------
-    let mailOptions = {
-      from: 'jenishmaru2020@gmail.com',
-      to: mail,
-      subject: 'Product Created',
-      text: `you have transfer product ${product} with ${quantity} Quantity from ${fromWarehouse} to ${toWarehouse}. `,
+    // let mailOptions = {
+    //   from: 'jenishmaru2020@gmail.com',
+    //   to: mail,
+    //   subject: 'Product Created',
+    //   text: `you have transfer product ${product} with ${quantity} Quantity from ${fromWarehouse} to ${toWarehouse}. `,
+    // }
+
+    // transporter.sendMail(mailOptions, function (error, info) {
+    //   if (error) {
+    //     console.log(error)
+    //   } else {
+    //     console.log('Email sent: ' + info.response)
+    //   }
+    // })
+    //-----------------------
+    let obj = {
+      status: 'true',
+      message: 'product transfered in warehouse.',
     }
 
-    transporter.sendMail(mailOptions, function (error, info) {
-      if (error) {
-        console.log(error)
-      } else {
-        console.log('Email sent: ' + info.response)
-      }
-    })
-    //-----------------------
-    res.json({ message: 'product transfered in warehouse.' })
+    return res.json(apiResponse(obj))
+    // res.json({ message: 'product transfered in warehouse.' })
   } else {
     const newUpdate = await WarehouseProduct.findByIdAndUpdate(
       { _id: Data._id },
       { $set: { quantity: quantity + Data.quantity } },
     )
-    res.json({ message: 'product transfered in warehouse.' })
+    let obj = {
+      status: 'true',
+      message: 'product transfered in warehouse.',
+    }
+
+    return res.json(apiResponse(obj))
+    // res.json({ message: 'product transfered in warehouse.' })
   }
 }
 

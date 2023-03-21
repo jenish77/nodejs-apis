@@ -3,6 +3,9 @@ const User = require('../models/User')
 const mongoose = require('mongoose')
 const Wallet = require('../models/Wallet')
 const Transaction = require('../models/Transection')
+const Validator = require('validatorjs')
+
+const apiResponse = require('../response')
 
 const uuid = require('uuid')
 
@@ -39,8 +42,13 @@ const register = async (req, res, next) => {
       })
 
       await newUser.save()
+      let obj = {
+        status: 'true',
+        message: 'wallet register success.',
+      }
 
-      res.json({ message: 'wallet register success.' })
+      return res.json(apiResponse(obj))
+      // res.json({ message: 'wallet register success.' })
     } else {
       res.json({ message: 'alredy Registerd for payment' })
     }
@@ -57,7 +65,34 @@ const deposit = async (req, res, next) => {
   try {
     let userId = req.headers.userid
     const { amount } = req.body
-    if (!amount || amount < 0) throw new Error('please add valid amount')
+
+    const data = {
+      amount: amount,
+    }
+    const rules = {
+      amount: 'required|integer',
+    }
+
+    const validator = new Validator(data, rules)
+
+    if (validator.fails()) {
+      let transformed = {}
+
+      Object.keys(validator.errors.errors).forEach(function (key, val) {
+        transformed[key] = validator.errors.errors[key][0]
+      })
+
+      const responseObject = {
+        status: 'false',
+        message: transformed,
+      }
+      return res.json(apiResponse(responseObject))
+    }
+
+    // if (!amount || amount < 0) throw new Error('please add valid amount')
+    if (amount < 0) {
+      res.json({ message: 'please add valid amount' })
+    }
 
     const Data = await Wallet.findOne({ user_id: userId })
 
@@ -77,7 +112,13 @@ const deposit = async (req, res, next) => {
       })
       await transaction.save()
     }
-    res.json({ message: 'amount deposite successfully.' })
+    let obj = {
+      status: 'true',
+      message: 'amount deposite successfully.',
+    }
+
+    return res.json(apiResponse(obj))
+    // res.json({ message: 'amount deposite successfully.' })
   } catch (error) {
     return res
       .json({ message: error.message ?? 'something went wrong' })
@@ -91,9 +132,36 @@ const withdraw = async (req, res, next) => {
     const userId = req.headers.userid
     amount = req.body.amount
 
-    if (!amount || amount < 0) {
-      return res.status(400).send({ message: 'Please  add valid amount' })
+    const data = {
+      amount: amount,
     }
+    const rules = {
+      amount: 'required|integer',
+    }
+
+    const validator = new Validator(data, rules)
+
+    if (validator.fails()) {
+      let transformed = {}
+
+      Object.keys(validator.errors.errors).forEach(function (key, val) {
+        transformed[key] = validator.errors.errors[key][0]
+      })
+
+      const responseObject = {
+        status: 'false',
+        message: transformed,
+      }
+      return res.json(apiResponse(responseObject))
+    }
+
+    if (amount < 0) {
+      res.json({ message: 'please add valid amount' })
+    }
+
+    // if (!amount || amount < 0) {
+    //   return res.status(400).send({ message: 'Please  add valid amount' })
+    // }
 
     const Data = await Wallet.findOne({ user_id: userId })
     try {
@@ -120,13 +188,20 @@ const withdraw = async (req, res, next) => {
         })
         await transaction.save()
       }
+
+      let obj = {
+        status: 'true',
+        message: 'amount withdraw successfully.',
+      }
+
+      return res.json(apiResponse(obj))
     } catch (error) {
       return res
         .json({ message: error.message ?? 'something went wrong' })
         .status(403)
     }
 
-    res.json({ message: 'amount withdraw successfully.' })
+    // res.json({ message: 'amount withdraw successfully.' })
   } catch (error) {
     return res
       .json({ message: error.message ?? 'something went wrong' })
@@ -141,12 +216,41 @@ const transaction = async (req, res, next) => {
     let key = req.body.walletKey
     let uuuid = uuid.v4()
 
+    const data = {
+      amount: amount,
+      key: key,
+    }
+    const rules = {
+      amount: 'required|integer',
+      key: 'required',
+    }
+
+    const validator = new Validator(data, rules)
+
+    if (validator.fails()) {
+      let transformed = {}
+
+      Object.keys(validator.errors.errors).forEach(function (key, val) {
+        transformed[key] = validator.errors.errors[key][0]
+      })
+
+      const responseObject = {
+        status: 'false',
+        message: transformed,
+      }
+      return res.json(apiResponse(responseObject))
+    }
+
     const Data = await Wallet.findOne({ walletKey: key })
 
-    if (!Data) throw new Error('user not found')
+    if (!Data) {
+      return res.json({ message: 'user not found' })
+    }
+    // throw new Error('user not found')
 
-    if (userId.toString() === Data.user_id.toString())
-      throw new Error("you can't transfer yourself")
+    if (userId.toString() === Data.user_id.toString()) {
+      return res.json({ message: `you can't transfer yourself` })
+    }
 
     let rData = await Wallet.findByIdAndUpdate(
       { _id: Data._id },
@@ -174,8 +278,13 @@ const transaction = async (req, res, next) => {
       await sTransaction.save()
       await rTransaction.save()
     }
+    let obj = {
+      status: 'true',
+      message: 'transaction successfully',
+    }
 
-    res.json({ message: 'transaction successfully' })
+    return res.json(apiResponse(obj))
+    // res.json({ message: 'transaction successfully' })
   } catch (error) {
     return res
       .json({ message: error.message ?? 'something went wrong' })

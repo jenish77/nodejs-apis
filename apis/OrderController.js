@@ -1,11 +1,33 @@
 const Order = require('../models/Order')
 const mongoose = require('mongoose')
 const WarehouseProduct = require('../models/WarehouseProduct')
+const Validator = require('validatorjs')
 
 const order = async (req, res, next) => {
   const userId = req.headers.userid
   const productId = req.params.id
   const quantity = req.body.quantity
+
+  const data = {
+    quantity: quantity,
+  }
+  const rules = {
+    quantity: 'required|integer',
+  }
+  const validator = new Validator(data, rules)
+
+  if (validator.fails()) {
+    let transformed = {}
+    Object.keys(validator.errors.errors).forEach(function (key, val) {
+      transformed[key] = validator.errors.errors[key][0]
+    })
+
+    const responseObject = {
+      status: 'false',
+      message: transformed,
+    }
+    return res.json(apiResponse(responseObject))
+  }
 
   let addOrder = new Order({
     productId: productId,
@@ -22,7 +44,13 @@ const order = async (req, res, next) => {
       { $set: { quantity: Data.quantity - quantity } },
     )
   }
-  res.json({ message: 'orderr place' })
+  let obj = {
+    status: 'true',
+    message: 'order place successfully.',
+  }
+
+  return res.json(apiResponse(obj))
+  //   res.json({ message: 'orderr place' })
 }
 
 const getOrder = async (req, res, next) => {

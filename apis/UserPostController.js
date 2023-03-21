@@ -27,17 +27,17 @@ const register = async (req, res, next) => {
         'regex:/^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{6,16}$/',
       ],
     }
-
     const validator = new Validator(data, rules)
 
     if (validator.fails()) {
       let transformed = {}
+
       Object.keys(validator.errors.errors).forEach(function (key, val) {
         transformed[key] = validator.errors.errors[key][0]
       })
 
       const responseObject = {
-        statusCode: 'false',
+        status: 'false',
         message: transformed,
       }
       return res.json(apiResponse(responseObject))
@@ -45,7 +45,7 @@ const register = async (req, res, next) => {
 
     const eid = await User.findOne({ email: req.body.email })
     if (eid) {
-      res.json({ meseasage: 'email already exist' })
+      res.json({ message: 'email already exist' })
     } else {
       let user = new User({
         name: req.body.name,
@@ -55,7 +55,7 @@ const register = async (req, res, next) => {
       const res_ = await user.save()
 
       let obj = {
-        statusCode: 'true',
+        status: 'true',
         message: 'register successfully',
       }
 
@@ -74,7 +74,13 @@ const destroy = async (req, res, next) => {
   try {
     const deletee = await User.findOneAndRemove({ _id: userId })
     console.log(deletee)
-    res.json({ message: 'Deleted successfully' })
+
+    let obj = {
+      status: 'true',
+      message: 'Deleted successfully',
+    }
+
+    res.json(apiResponse(obj))
 
     // const eid = await Employee.findOne({ email: req.body.email })
     // if (!eid) {
@@ -92,14 +98,46 @@ const secretKey = 'important'
 // LOGIN API
 const login = async (req, res, next) => {
   const { email, password } = req.body
-  if (!email || !password) {
-    throw new Error('email or password required')
+
+  const data = {
+    email: email,
+    password: password,
   }
+  // console.log(password)
+  const rules = {
+    email: 'required|string|email',
+    password: [
+      'required',
+
+      // 'regex:/^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{6,16}$/',
+    ],
+  }
+
+  const validator = new Validator(data, rules)
+
+  if (validator.fails()) {
+    let transformed = {}
+    Object.keys(validator.errors.errors).forEach(function (key, val) {
+      transformed[key] = validator.errors.errors[key][0]
+    })
+    const responseObject = {
+      status: 'false',
+      message: transformed,
+    }
+    return res.json(apiResponse(responseObject))
+  }
+
+  // if (!email || !password) {
+  //   throw new Error('email or password required')
+  // }
   const checkEmail = await User.findOne({ email: email })
-  if (!checkEmail) throw new Error('email is not register with db')
+  // if (!checkEmail) throw new Error('email is not register with db')
+  if (!checkEmail) {
+    return res.json({ message: 'email is not register with db ' })
+  }
 
   if (!(email && (await bcrypt.compare(password, checkEmail.password)))) {
-    res.json({ message: 'please enter valid email and password' })
+    return res.json({ message: 'please enter valid email and password' })
   }
 
   // CREATE TOKEN
@@ -146,6 +184,9 @@ const show = async (req, res, next) => {
 
   try {
     const show = await User.findById(userId)
+    if (!show) {
+      res.json({ message: 'user not found' })
+    }
     res.send({
       name: show.name,
       email: show.email,
@@ -161,9 +202,34 @@ const show = async (req, res, next) => {
 //update the user data
 const update = async (req, res, next) => {
   const { email, name } = req.body
-  if (!email || !name) {
-    return res.send({ message: 'please add mandatory feild' })
+
+  const data = {
+    name: name,
+    email: email,
   }
+
+  const rules = {
+    name: 'required|string',
+    email: 'required|string|email',
+  }
+  const validator = new Validator(data, rules)
+
+  if (validator.fails()) {
+    let transformed = {}
+    Object.keys(validator.errors.errors).forEach(function (key, val) {
+      transformed[key] = validator.errors.errors[key][0]
+    })
+
+    const responseObject = {
+      status: 'false',
+      message: transformed,
+    }
+    return res.json(apiResponse(responseObject))
+  }
+
+  // if (!email || !name) {
+  //   return res.send({ message: 'please add mandatory feild' })
+  // }
   let id = req.headers.userid
   let updateData = {
     name: req.body.name,
@@ -173,8 +239,13 @@ const update = async (req, res, next) => {
     const updatee = await User.findByIdAndUpdate(id, {
       $set: updateData,
     })
+    let obj = {
+      status: 'true',
+      message: 'updated successfully',
+    }
 
-    res.json({ message: 'updated successfully' })
+    return res.json(apiResponse(obj))
+    // res.json({ message: 'updated successfully' })
   } catch (error) {
     res.json({
       message: 'error ocurred during update the data' + error.message,
@@ -185,19 +256,42 @@ const update = async (req, res, next) => {
 //Forgot password
 const Fpassword = async (req, res, next) => {
   const { email } = req.body
+
+  const data = {
+    email: email,
+  }
+  const rules = {
+    email: 'required|email',
+  }
+
+  const validator = new Validator(data, rules)
+
+  if (validator.fails()) {
+    let transformed = {}
+
+    Object.keys(validator.errors.errors).forEach(function (key, val) {
+      transformed[key] = validator.errors.errors[key][0]
+    })
+    const responseObject = {
+      status: 'false',
+      message: transformed,
+    }
+    return res.json(apiResponse(responseObject))
+  }
+
   User.findOne({ email }, (err, user) => {
     if (err || !user) {
       return res
         .status(400)
         .json({ error: 'User with this email does not exist.' })
     }
-    console.log(user)
+    // console.log(user)
     try {
       const token = jwt.sign({ _id: user._id }, 'topsecret', {
         expiresIn: '1h',
       })
-      console.log('uuuuuu=', user._id)
-      console.log('tokenva', token)
+      // console.log('uuuuuu=', user._id)
+      // console.log('tokenva', token)
       return User.findByIdAndUpdate(
         user._id, //-------
         { resetLink: token },
@@ -225,9 +319,12 @@ const resetpassword = async (req, res, next) => {
   }
   try {
     const token = req.body.resetLink
-    console.log(token)
+    // console.log(token)
     // const tokenData = await Employee.findOne({ token: token })
     const tokenData = await User.findOne({ resetLink: token })
+    if (!tokenData) {
+      return res.json({ message: 'Link is not valid' })
+    }
     console.log('tokendataId,', tokenData._id)
     if (tokenData) {
       const password = req.body.newPass
@@ -238,7 +335,13 @@ const resetpassword = async (req, res, next) => {
         { $set: { password: newPassword, token: '' } },
         { new: true },
       )
-      res.status(200).json({ userData })
+      let obj = {
+        status: 'true',
+        message: 'password reset successfully',
+      }
+
+      return res.json(apiResponse(obj))
+      // res.status(200).json({ userData })
     }
   } catch (error) {
     res.json({
@@ -255,15 +358,47 @@ const changePassword = async (req, res, next) => {
     res.json({ error: 'please login using correct email and password' })
   }
   const data = await User.findOne({ _id: id })
-  console.log(data)
+  // console.log(data)
   const opassword = req.body.oldpassword
   const npassword = req.body.newpassword
   const cpassword = req.body.confirmpassword
   console.log(opassword, '+', npassword, '+', cpassword)
 
-  if (!opassword || !npassword || !cpassword) {
-    return res.status(400).send({ message: 'please andd mandatory field' })
+  const datas = {
+    opassword: opassword,
+    npassword: npassword,
+    cpassword: cpassword,
   }
+  const rules = {
+    opassword: 'required',
+    npassword: [
+      'required',
+      'regex:/^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{6,16}$/',
+    ],
+    cpassword: [
+      'required',
+      'regex:/^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{6,16}$/',
+    ],
+  }
+  const validator = new Validator(datas, rules)
+
+  if (validator.fails()) {
+    let transformed = {}
+
+    Object.keys(validator.errors.errors).forEach(function (key, val) {
+      transformed[key] = validator.errors.errors[key][0]
+    })
+
+    const responseObject = {
+      status: 'false',
+      message: transformed,
+    }
+    return res.json(apiResponse(responseObject))
+  }
+
+  // if (!opassword || !npassword || !cpassword) {
+  //   return res.status(400).send({ message: 'please andd mandatory field' })
+  // }
 
   if (npassword !== cpassword) {
     return res
@@ -290,9 +425,17 @@ const changePassword = async (req, res, next) => {
   const userData = await User.findByIdAndUpdate(
     { _id: data._id },
     { $set: { password: newPassword, token: '' } },
-    { new: true },
+    // { new: true },
   )
-  return res.status(200).json({ userData })
+
+  let obj = {
+    status: 'true',
+    message: 'Password change successfully',
+  }
+
+  return res.json(apiResponse(obj))
+
+  // return res.status(200).json({ userData })
 }
 
 //upload post
@@ -359,9 +502,11 @@ const like = async (req, res, next) => {
     let postId = req.params.postId
     let userId = req.headers.userid
 
-    console.log(postId)
     const postData = await Post.findById(postId)
-    if (!postData) throw new Error('post not found')
+    // if (!postData) throw new Error('post not found')
+    if (!postData) {
+      return res.json({ message: 'post not found' })
+    }
 
     if (userId.toString() === postData.userid.toString())
       throw new Error("you can't like post by yourself")
@@ -374,15 +519,25 @@ const like = async (req, res, next) => {
       })
       await setlike.save()
       let countlike = await Like.find({ post_id: postId }).count()
-      res.json({
+      const responseObject = {
+        status: 'true',
         message: ` 'like successfully','total like in this post: ${countlike}' `,
-      })
+      }
+      return res.json(apiResponse(responseObject))
+      // res.json({
+      //   message: ` 'like successfully','total like in this post: ${countlike}' `,
+      // })
     } else {
       await Like.findByIdAndRemove(likedata._id)
       let countlike = await Like.find({ post_id: postId }).count()
-      return res.json({
+      const responseObject = {
+        status: 'true',
         message: ` 'dislike successfully','total like in this post: ${countlike}' `,
-      })
+      }
+      return res.json(apiResponse(responseObject))
+      // return res.json({
+      //   message: ` 'dislike successfully','total like in this post: ${countlike}' `,
+      // })
     }
   } catch (error) {
     return res
@@ -397,6 +552,26 @@ const comment = async (req, res, next) => {
     let postId = req.params.postid
     let userId = req.headers.userid
     let comment = req.body.comment
+    const data = {
+      comment: comment,
+    }
+    const rules = {
+      comment: 'required',
+    }
+    const validator = new Validator(data, rules)
+    if (validator.fails()) {
+      let transformed = {}
+
+      Object.keys(validator.errors.errors).forEach(function (key, val) {
+        transformed[key] = validator.errors.errors[key][0]
+      })
+
+      const responseObject = {
+        status: 'false',
+        message: transformed,
+      }
+      return res.json(apiResponse(responseObject))
+    }
 
     let postData = await Post.findById(postId)
     if (!postData) throw new Error('Post not found')
@@ -415,7 +590,13 @@ const comment = async (req, res, next) => {
       let com = await Comment.find({ post_id: postId })
       res.json({ comment: com })
     } else {
-      res.json({ message: 'you alredy comment on this post' })
+      let obj = {
+        status: 'true',
+        message: 'you alredy comment on this post',
+      }
+
+      return res.json(apiResponse(obj))
+      // res.json({ message: 'you alredy comment on this post' })
     }
   } catch (error) {
     return res
@@ -440,7 +621,15 @@ const deleteComment = async (req, res, next) => {
     res.json({ message: 'comment does not exist' })
   } else {
     await Comment.findByIdAndRemove(commentData._id)
-    res.json({ message: 'delete comment successfully.' })
+
+    let obj = {
+      status: 'true',
+      message: 'delete comment successfully.',
+    }
+
+    return res.json(apiResponse(obj))
+
+    // res.json({ message: 'delete comment successfully.' })
   }
 }
 
@@ -559,10 +748,6 @@ const likedata = async (req, res, next) => {
 
 const latestPost = async (req, res, next) => {
   try {
-    // const data = await Post.find({ $orderby: { createdAt: -1 } })
-    // res.json({ data: data })
-    //------
-
     const postdata = await Post.find().sort({ createdAt: -1 })
     res.json({ data: postdata })
   } catch (error) {
@@ -593,6 +778,9 @@ const getimage = async (req, res, next) => {
   let postid = req.params.postid
   //   console.log(postid)
   let image = await Post.findOne({ postid })
+  if (!image) {
+    return res.json({ message: 'post not found' })
+  }
   //   console.log(image.name)
 
   res.json({ image })

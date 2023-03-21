@@ -6,6 +6,9 @@ const Image = require('../models/image')
 const multer = require('multer')
 const jwt = require('jsonwebtoken')
 const nodemailer = require('nodemailer')
+const Validator = require('validatorjs')
+
+const apiResponse = require('../response')
 
 const bcrypt = require('bcrypt')
 
@@ -13,6 +16,28 @@ const bcrypt = require('bcrypt')
 const category = async (req, res, next) => {
   try {
     const { name } = req.body
+
+    const data = {
+      name: name,
+    }
+    const rules = {
+      name: 'required|string',
+    }
+    const validator = new Validator(data, rules)
+    if (validator.fails()) {
+      let transformed = {}
+
+      Object.keys(validator.errors.errors).forEach(function (key, val) {
+        transformed[key] = validator.errors.errors[key][0]
+      })
+
+      const responseObject = {
+        status: 'false',
+        message: transformed,
+      }
+      return res.json(apiResponse(responseObject))
+    }
+
     const categorydata = await Category.findOne({ name: name })
     if (!categorydata) {
       let category = new Category({
@@ -20,9 +45,21 @@ const category = async (req, res, next) => {
         status: req.body.status,
       })
       await category.save()
-      res.json({ message: 'category added successfully' })
+      let obj = {
+        status: 'true',
+        message: 'category added successfully',
+      }
+
+      return res.json(apiResponse(obj))
+      // res.json({ message: 'category added successfully' })
     } else {
-      res.json({ message: 'already added this category' })
+      let obj = {
+        status: 'true',
+        message: 'already added this category',
+      }
+
+      return res.json(apiResponse(obj))
+      // res.json({ message: 'already added this category' })
     }
   } catch (error) {
     return res.json({ message: error.message }).status(403)
@@ -74,16 +111,16 @@ appp.use('/image', express.static('public/uploads/'))
 
 // create product
 const product = async (req, res, next) => {
-  var transporter = nodemailer.createTransport({
-    service: 'gmail',
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: {
-      user: 'jenishmaru2020@gmail.com',
-      pass: 'bpfbeycocmjfuwlm',
-    },
-  })
+  // var transporter = nodemailer.createTransport({
+  //   service: 'gmail',
+  //   host: 'smtp.gmail.com',
+  //   port: 465,
+  //   secure: true,
+  //   auth: {
+  //     user: 'jenishmaru2020@gmail.com',
+  //     pass: 'bpfbeycocmjfuwlm',
+  //   },
+  // })
 
   try {
     const category = req.params.id
@@ -91,10 +128,43 @@ const product = async (req, res, next) => {
 
     let userId = req.headers.userid
 
-    const mail = await Admin.findById(userId).select('email')
+    const data = {
+      name: name,
+      sku: sku,
+      price: price,
+      modelId: modelId,
+      description: description,
+      image: image,
+      quantity: quantity,
+    }
+    const rules = {
+      name: 'required|string',
+      sku: 'required',
+      price: 'required|integer',
+      modelId: 'required',
+      description: 'required|string',
+      image: 'required',
+      quantity: 'required|integer',
+    }
 
-    if (!name || !sku || !price || !modelId || !description)
-      throw new Error('please add mandatory feild')
+    const validator = new Validator(data, rules)
+
+    if (validator.fails()) {
+      let transformed = {}
+      Object.keys(validator.errors.errors).forEach(function (key, val) {
+        transformed[key] = validator.errors.errors[key][0]
+      })
+      const responseObject = {
+        status: 'false',
+        message: transformed,
+      }
+      return res.json(apiResponse(responseObject))
+    }
+
+    // const mail = await Admin.findById(userId).select('email')
+
+    // if (!name || !sku || !price || !modelId || !description)
+    //   throw new Error('please add mandatory feild')
 
     let prod = await Product.findOne({ sku: sku })
     if (prod) {
@@ -112,37 +182,54 @@ const product = async (req, res, next) => {
       })
       await product.save()
       //---------------------
-      let mailOptions = {
-        from: 'jenishmaru2020@gmail.com',
-        to: mail,
-        subject: 'Product Created',
-        text: `you have upload product ${name} with ${quantity} Quantity. `,
+      // let mailOptions = {
+      //   from: 'jenishmaru2020@gmail.com',
+      //   to: mail,
+      //   subject: 'Product Created',
+      //   text: `you have upload product ${name} with ${quantity} Quantity. `,
+      // }
+
+      // transporter.sendMail(mailOptions, function (error, info) {
+      //   if (error) {
+      //     console.log(error)
+      //   } else {
+      //     console.log('Email sent: ' + info.response)
+      //   }
+      // })
+      // //--------------------
+      let obj = {
+        status: 'true',
+        message: 'product added successfully',
       }
 
-      transporter.sendMail(mailOptions, function (error, info) {
-        if (error) {
-          console.log(error)
-        } else {
-          console.log('Email sent: ' + info.response)
-        }
-      })
-      //--------------------
-      res.json({ message: 'product added successfully' })
+      return res.json(apiResponse(obj))
+      // res.json({ message: 'product added successfully' })
     }
   } catch (error) {
     return res.json({ message: error.message }).status(403)
   }
 }
 
-//get product
+//get product with searching and sorting by passing params
 
-const getProduct = async (req, res, next) => {
+const getProducts = async (req, res, next) => {
   const { page = 1, limit = 10 } = req.query
+
+  const keyword = req.query.keyword
+
+  const sortOrder = req.query.SortBy === 'desc' ? -1 : 1
+
   const product = await Product.find()
+
     .limit(limit * page)
     .skip((page - 1) * limit)
     .sort({ createdAt: -1 })
-  res.send(product)
+
+  const matchProduct = await Product.find({ name: { $regex: keyword } }).sort({
+    name: sortOrder,
+  })
+
+  res.send(matchProduct)
 }
 
 // update product
@@ -151,8 +238,32 @@ const productUpdate = async (req, res, next) => {
 
   const { name, description, sku, quantity } = req.body
 
-  if (!name || !description || !sku || !quantity)
-    throw new Error('please add required field')
+  const data = {
+    name: name,
+    sku: sku,
+    description: description,
+    quantity: quantity,
+  }
+  const rules = {
+    name: 'required|string',
+    sku: 'required',
+    description: 'required|string',
+    quantity: 'required|integer',
+  }
+
+  const validator = new Validator(data, rules)
+
+  if (validator.fails()) {
+    let transformed = {}
+    Object.keys(validator.errors.errors).forEach(function (key, val) {
+      transformed[key] = validator.errors.errors[key][0]
+    })
+    const responseObject = {
+      status: 'false',
+      message: transformed,
+    }
+    return res.json(apiResponse(responseObject))
+  }
 
   let updateData = {
     name: name,
@@ -165,7 +276,13 @@ const productUpdate = async (req, res, next) => {
     const update = await Product.findByIdAndUpdate(pId, {
       $set: updateData,
     })
-    res.json({ message: 'product updated successfully' })
+    let obj = {
+      status: 'true',
+      message: 'product updated successfully',
+    }
+
+    return res.json(apiResponse(obj))
+    // res.json({ message: 'product updated successfully' })
   } catch (error) {
     return res.json({ message: error.message }).status(403)
   }
@@ -176,7 +293,13 @@ const productDelete = async (req, res, next) => {
   try {
     const pId = req.params.id
     const remove = await Product.findByIdAndRemove(pId)
-    res.json({ message: 'delete successfully' })
+    let obj = {
+      status: 'true',
+      message: 'delete successfully',
+    }
+
+    return res.json(apiResponse(obj))
+    // res.json({ message: 'delete successfully' })
   } catch (error) {
     return res.json({ message: error.message })
   }
@@ -189,11 +312,15 @@ const productDelete = async (req, res, next) => {
 //warehouse productId
 //
 
+// const search = async (req, res, next) => {
+//   res.json({ message: 'serching...' })
+// }
+
 module.exports = {
   category,
   upload,
   product,
-  getProduct,
+  getProducts,
   productUpdate,
   productDelete,
 }
