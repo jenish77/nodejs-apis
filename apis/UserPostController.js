@@ -5,6 +5,7 @@ const Comment = require('../models/Postcomment')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 const multer = require('multer')
+const nodemailer = require('nodemailer')
 const Validator = require('validatorjs')
 
 const apiResponse = require('../response')
@@ -253,8 +254,21 @@ const update = async (req, res, next) => {
   }
 }
 
-//Forgot password
+//****************('Forgot password')########################
+
 const Fpassword = async (req, res, next) => {
+  //otp generate
+  function generateOTP() {
+    var digits = '0123456789'
+    let OTP = ''
+    for (let i = 0; i < 6; i++) {
+      OTP += digits[Math.floor(Math.random() * 10)]
+    }
+    return OTP
+  }
+
+  let otp = generateOTP()
+
   const { email } = req.body
 
   const data = {
@@ -278,23 +292,22 @@ const Fpassword = async (req, res, next) => {
     }
     return res.json(apiResponse(responseObject))
   }
-
+  //----------------------------------------------
   User.findOne({ email }, (err, user) => {
     if (err || !user) {
       return res
         .status(400)
         .json({ error: 'User with this email does not exist.' })
     }
-    // console.log(user)
+
     try {
       const token = jwt.sign({ _id: user._id }, 'topsecret', {
         expiresIn: '1h',
       })
-      // console.log('uuuuuu=', user._id)
-      // console.log('tokenva', token)
+
       return User.findByIdAndUpdate(
-        user._id, //-------
-        { resetLink: token },
+        user._id,
+        { resetLink: token, otp: otp },
         (err, success) => {
           if (err) {
             return res.status(400).json({ error: 'reset password link error.' })
@@ -311,37 +324,36 @@ const Fpassword = async (req, res, next) => {
   })
 }
 
-// reset password in user
+//****************('reset password in user')########################
+
 const resetpassword = async (req, res, next) => {
-  const securePassword = async (password) => {
-    const passwordHash = await bcrypt.hash(password, 10)
-    return passwordHash
-  }
   try {
     const token = req.body.resetLink
-    // console.log(token)
-    // const tokenData = await Employee.findOne({ token: token })
+    const otp = req.body.otp
+
     const tokenData = await User.findOne({ resetLink: token })
+
     if (!tokenData) {
       return res.json({ message: 'Link is not valid' })
     }
-    console.log('tokendataId,', tokenData._id)
+
     if (tokenData) {
-      const password = req.body.newPass
-      const newPassword = await securePassword(password)
+      //
+      if (tokenData.otp === otp) {
+        const newtoken = jwt.sign({ _id: tokenData._id }, 'secrettop', {
+          expiresIn: '1h',
+        })
 
-      const userData = await User.findByIdAndUpdate(
-        { _id: tokenData._id },
-        { $set: { password: newPassword, token: '' } },
-        { new: true },
-      )
-      let obj = {
-        status: 'true',
-        message: 'password reset successfully',
+        let obj = {
+          status: 'true',
+          message: 'otp verification successfully.',
+          data: newtoken,
+        }
+
+        return res.json(apiResponse(obj))
+      } else {
+        return res.json({ message: 'invalid otp' })
       }
-
-      return res.json(apiResponse(obj))
-      // res.status(200).json({ userData })
     }
   } catch (error) {
     res.json({
@@ -350,7 +362,38 @@ const resetpassword = async (req, res, next) => {
   }
 }
 
-// change password for user
+//****************('after otp verification change password in user')########################
+const orPassword = async (req, res, next) => {
+  const securePassword = async (password) => {
+    const passwordHash = await bcrypt.hash(password, 10)
+    return passwordHash
+  }
+  const token = req.body.token
+  const password = req.body.newPass
+  const newPassword = await securePassword(password)
+
+  jwt.verify(token, 'secrettop', (err, authData) => {
+    if (err) {
+      res.json({ message: 'Invalidate token' + err.message })
+    } else {
+      req.body.user = authData._id
+    }
+  })
+
+  const userId = req.body.user
+
+  const Data = await User.findByIdAndUpdate(userId, {
+    $set: { password: newPassword },
+  })
+  let obj = {
+    status: 'true',
+    message: 'password updated successfully',
+  }
+
+  return res.json(apiResponse(obj))
+}
+
+// **********************('change password for user')**********************
 const changePassword = async (req, res, next) => {
   let id = req.headers.userid
 
@@ -395,10 +438,6 @@ const changePassword = async (req, res, next) => {
     }
     return res.json(apiResponse(responseObject))
   }
-
-  // if (!opassword || !npassword || !cpassword) {
-  //   return res.status(400).send({ message: 'please andd mandatory field' })
-  // }
 
   if (npassword !== cpassword) {
     return res
@@ -798,6 +837,7 @@ module.exports = {
   Fpassword,
   resetpassword,
   changePassword,
+  orPassword,
   upload,
   like,
   countlike,

@@ -9,6 +9,7 @@ const userSchema = new Schema(
     password: {
       type: String,
     },
+    otp: { type: String },
     resetLink: {
       data: String,
       default: '',

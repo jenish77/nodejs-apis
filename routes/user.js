@@ -16,6 +16,8 @@ router.delete(
 router.put('/Fpassword', UserPostController.Fpassword)
 router.put('/resetpassword', UserPostController.resetpassword)
 
+router.post('/orPassword', UserPostController.orPassword)
+
 router.put(
   '/changePassword',
   UserPostController.verifyToken,
