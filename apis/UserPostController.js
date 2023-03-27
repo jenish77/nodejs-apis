@@ -671,7 +671,9 @@ const comment = async (req, res, next) => {
     }
 
     let postData = await Post.findById(postId)
-    if (!postData) throw new Error('Post not found')
+    if (!postData) {
+      return res.json({ message: 'Post not found' })
+    }
 
     let commentData = await Comment.findOne({
       user_id: userId,
@@ -693,7 +695,6 @@ const comment = async (req, res, next) => {
       }
 
       return res.json(apiResponse(obj))
-      // res.json({ message: 'you alredy comment on this post' })
     }
   } catch (error) {
     return res
@@ -708,7 +709,10 @@ const deleteComment = async (req, res, next) => {
   let userId = req.headers.userid
 
   let postData = await Post.findById(postId)
-  if (!postData) throw new Error('Post not found')
+  if (!postData)
+    if (!postData) {
+      return res.json({ message: 'Post not found' })
+    }
 
   let commentData = await Comment.findOne({
     user_id: userId,
