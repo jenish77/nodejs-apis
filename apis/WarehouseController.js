@@ -304,7 +304,6 @@ const transfer = async (req, res, next) => {
     }
 
     return res.json(apiResponse(obj))
-    // res.json({ message: 'product transfered in warehouse.' })
   } else {
     const newUpdate = await WarehouseProduct.findByIdAndUpdate(
       { _id: Data._id },
@@ -316,7 +315,6 @@ const transfer = async (req, res, next) => {
     }
 
     return res.json(apiResponse(obj))
-    // res.json({ message: 'product transfered in warehouse.' })
   }
 }
 

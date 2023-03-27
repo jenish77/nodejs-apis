@@ -27,6 +27,7 @@ const genrateUniqueWalletKey = async () => {
   return walletKey
 }
 
+//register wallet
 const register = async (req, res, next) => {
   try {
     const userId = req.headers.userid
@@ -50,7 +51,7 @@ const register = async (req, res, next) => {
       return res.json(apiResponse(obj))
       // res.json({ message: 'wallet register success.' })
     } else {
-      res.json({ message: 'alredy Registerd for payment' })
+      res.json({ message: 'already Registerd for payment' })
     }
   } catch (error) {
     return res
@@ -126,6 +127,7 @@ const deposit = async (req, res, next) => {
   }
 }
 
+//withdraw money from wallet
 const withdraw = async (req, res, next) => {
   let uuuid = uuid.v4()
   try {
@@ -158,10 +160,6 @@ const withdraw = async (req, res, next) => {
     if (amount < 0) {
       res.json({ message: 'please add valid amount' })
     }
-
-    // if (!amount || amount < 0) {
-    //   return res.status(400).send({ message: 'Please  add valid amount' })
-    // }
 
     const Data = await Wallet.findOne({ user_id: userId })
     try {
@@ -221,7 +219,7 @@ const transaction = async (req, res, next) => {
       key: key,
     }
     const rules = {
-      amount: 'required|integer',
+      amount: 'required',
       key: 'required',
     }
 
@@ -242,34 +240,48 @@ const transaction = async (req, res, next) => {
     }
 
     const Data = await Wallet.findOne({ walletKey: key })
+    const aData = await Wallet.findOne({ user_id: userId })
+
+    if (aData.amount < 0) {
+      return res.json({ message: 'Enter valid amount' })
+    }
 
     if (!Data) {
       return res.json({ message: 'user not found' })
     }
-    // throw new Error('user not found')
 
     if (userId.toString() === Data.user_id.toString()) {
       return res.json({ message: `you can't transfer yourself` })
+    }
+    s
+
+    if (aData.amount < amount) {
+      return res.json({ message: 'Enter sufficient amount' })
     }
 
     let rData = await Wallet.findByIdAndUpdate(
       { _id: Data._id },
       { $set: { amount: Data.amount + amount } },
-      // { new: true },
     )
+
+    let sdata = await Wallet.findByIdAndUpdate(
+      { _id: aData._id },
+      { $set: { amount: aData.amount - amount } },
+    )
+
     if (rData) {
       let sTransaction = new Transaction({
         transactionType: 'DR',
-        userId: userId,
-        transactionUserId: Data.user_id,
+        userId: userId, // sender
+        transactionUserId: Data.user_id, //receiver
         purpose: 'transfer',
         reference: uuuid,
         amount: amount,
       })
       let rTransaction = new Transaction({
         transactionType: 'CR',
-        userId: Data.user_id,
-        transactionUserId: userId,
+        userId: Data.user_id, // receiver
+        transactionUserId: userId, //sender
         purpose: 'transfer',
         reference: uuuid,
         amount: amount,
@@ -298,7 +310,7 @@ const getTransaction = async (req, res, next) => {
   const { page = 1, limit = 10 } = req.query
 
   try {
-    const data = await Transaction.find({ userId: userId })
+    // const data = await Transaction.find({ userId: userId })
 
     const docs = await Transaction.aggregate([
       {

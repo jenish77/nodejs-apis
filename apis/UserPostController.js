@@ -5,7 +5,17 @@ const Comment = require('../models/Postcomment')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 const multer = require('multer')
+const express = require('express')
 const nodemailer = require('nodemailer')
+
+//to access object you should use like {} between curley braces.
+const { client } = require('../redis')
+
+const appp = express()
+var cookieParser = require('cookie-parser')
+
+appp.use(cookieParser())
+
 const Validator = require('validatorjs')
 
 const apiResponse = require('../response')
@@ -44,7 +54,7 @@ const register = async (req, res, next) => {
       return res.json(apiResponse(responseObject))
     }
 
-    const eid = await User.findOne({ email: req.body.email })
+    const eid = await User.findOne({ email: email })
     if (eid) {
       res.json({ message: 'email already exist' })
     } else {
@@ -82,11 +92,6 @@ const destroy = async (req, res, next) => {
     }
 
     res.json(apiResponse(obj))
-
-    // const eid = await Employee.findOne({ email: req.body.email })
-    // if (!eid) {
-    //   res.json({ message: 'Email already deleted' })
-    // }
   } catch (error) {
     res.json({
       message: 'error ocurred during delete the database.' + error.message,
@@ -141,6 +146,8 @@ const login = async (req, res, next) => {
     return res.json({ message: 'please enter valid email and password' })
   }
 
+  // const token = req.cookies.jwt
+  // console.log(token)
   // CREATE TOKEN
   jwt.sign(
     { usrId: checkEmail._id },
@@ -149,11 +156,20 @@ const login = async (req, res, next) => {
     (err, token) => {
       if (err) throw new Error('somethin went wrong')
       if (token) {
+        res.cookie('jwt', token, { maxAge: 900000, httpOnly: true })
+        // const tokenn = req.cookies.jwt
+        // console.log(tokenn)
         res.json({ token })
+        // res.cookie('jwt', token, { maxAge: 900000, httpOnly: true })
       }
     },
   )
+  // const token = req.cookies.jwt
+  // console.log(token)
 }
+
+//------------------------------------------
+//------------------------------------------
 
 //VERIFY TOKEN
 const verifyToken = async (req, res, next) => {
@@ -161,6 +177,9 @@ const verifyToken = async (req, res, next) => {
   if (typeof bearerHeader !== 'undefined') {
     const bearer = bearerHeader.split(' ')
     const token = bearer[1]
+
+    // const tokennnn = req.cookies.jwt
+    // console.log(tokennnn)
 
     jwt.verify(token, secretKey, (err, authData) => {
       if (err) {
@@ -178,6 +197,9 @@ const verifyToken = async (req, res, next) => {
 }
 
 const show = async (req, res, next) => {
+  // const authcookie = req.cookies
+  // console.log(authcookie)
+
   let userId = req.headers.userid
   if (!userId) {
     throw new Error('Id is missing')
@@ -257,6 +279,20 @@ const update = async (req, res, next) => {
 //****************('Forgot password')########################
 
 const Fpassword = async (req, res, next) => {
+  //send otp via mail
+  // let transport = nodemailer.createTransport(options)
+  var transporter = nodemailer.createTransport({
+    service: 'gmail',
+    // host: 'smtp.gmail.com',
+    // port: 465,
+    // type: 'OAuth2',
+    // secure: true,
+    auth: {
+      user: 'jenishmaru2020@gmail.com',
+      pass: 'bpfbeycocmjfuwlm',
+    },
+  })
+
   //otp generate
   function generateOTP() {
     var digits = '0123456789'
@@ -293,6 +329,15 @@ const Fpassword = async (req, res, next) => {
     return res.json(apiResponse(responseObject))
   }
   //----------------------------------------------
+  let mailOptions = {
+    from: 'jenishmaru2020@gmail.com',
+    to: email,
+    subject: 'OTP for forgot password',
+    text: ` TO change password ,otp is - ${otp} `,
+  }
+
+  //----------------------------------------------
+
   User.findOne({ email }, (err, user) => {
     if (err || !user) {
       return res
@@ -312,6 +357,17 @@ const Fpassword = async (req, res, next) => {
           if (err) {
             return res.status(400).json({ error: 'reset password link error.' })
           } else {
+            let info = transporter.sendMail(mailOptions, function (
+              error,
+              info,
+            ) {
+              if (error) {
+                console.log('ERROR', error)
+              } else {
+                console.log('Email sent: ' + info.response)
+              }
+            })
+            // console.log("info",info)
             res.json({ token })
           }
         },
@@ -477,7 +533,14 @@ const changePassword = async (req, res, next) => {
   // return res.status(200).json({ userData })
 }
 
-//upload post
+/**
+ *
+ * @param {*} req
+ * @param {*} res
+ * @param {*} next
+ *  @description upload post
+ */
+
 const upload = async (req, res, next) => {
   uploads(req, res, (err) => {
     if (err) {
@@ -518,8 +581,6 @@ const uploads = multer({
   //   fileFilter,
 }).single('testImage')
 
-const express = require('express')
-const appp = express()
 appp.use('/image', express.static('public/uploads/'))
 
 const mongoose = require('mongoose')
@@ -542,7 +603,7 @@ const like = async (req, res, next) => {
     let userId = req.headers.userid
 
     const postData = await Post.findById(postId)
-    // if (!postData) throw new Error('post not found')
+
     if (!postData) {
       return res.json({ message: 'post not found' })
     }
@@ -563,9 +624,6 @@ const like = async (req, res, next) => {
         message: ` 'like successfully','total like in this post: ${countlike}' `,
       }
       return res.json(apiResponse(responseObject))
-      // res.json({
-      //   message: ` 'like successfully','total like in this post: ${countlike}' `,
-      // })
     } else {
       await Like.findByIdAndRemove(likedata._id)
       let countlike = await Like.find({ post_id: postId }).count()
@@ -820,17 +878,76 @@ const getimage = async (req, res, next) => {
   if (!image) {
     return res.json({ message: 'post not found' })
   }
-  //   console.log(image.name)
 
   res.json({ image })
-
-  //   res.json({ message: 'here is your image' })
 }
+
+const logout = async (req, res, next) => {
+  const bearerHeader = req.headers['authorization']
+
+  const bearer = bearerHeader.split(' ')
+
+  const Logintoken = bearer[1]
+
+  try {
+    client.set(`blacklist:${Logintoken}`, 'true', 'EX', 3600, async (err) => {
+      if (err) {
+        console.log(err)
+        return res.json({ err })
+      }
+    })
+    return res.json({ message: 'User logout successfully' })
+  } catch (error) {
+    console.log('catch error', error)
+    return res.json(error)
+  }
+}
+// const tokennnn = req.cookies.jwt
+// console.log(tokennnn)
+
+// if (Logintoken) {
+//   // expire token in bearer token
+//   jwt.verify(Logintoken, secretKey, (err, decoded) => {
+//     if (err) {
+//       console.log(err)
+//     }
+//     res.clearCookie('jwt')
+//     res.status(200).json({
+//       message: 'Logout Successful',
+//     })
+//   })
+// }
+
+// console.log(Logintoken)
+// jwt.sign(Logintoken, '', { expiresIn: 1 }, (logout, err) => {
+//   if (logout) {
+//     res.clearCookie('jwt')
+//     res.send({ msg: 'You have been Logged Out' })
+//   } else {
+//     res.send({ msg: 'Error' })
+//   }
+// })
+
+// res.json({ message: 'logout' })
+
+// const logout = async (req, res, next) => {
+//   const bearerHeader = req.headers['authorization']
+
+//   const bearer = bearerHeader.split(' ')
+//   // const userId = req.headers.userid
+
+//   const Logintoken = bearer[1]
+//   //   // console.log(Logintoken)
+
+//   //*************************** */
+
+//*************************** */
 
 module.exports = {
   register,
   destroy,
   login,
+  logout,
   show,
   verifyToken,
   update,

@@ -1,6 +1,5 @@
 const Admin = require('../models/Admin')
 const Product = require('../models/Product')
-// const User = require('../models/User')
 const Category = require('../models/Category')
 const Image = require('../models/image')
 const multer = require('multer')

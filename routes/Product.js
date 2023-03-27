@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const AdminController = require('../apis/AdminController')
 const ProductCntroller = require('../apis/ProductController')
+// const UserPostController = require('../apis/UserPostController')
 
 router.post(
   '/category',
@@ -24,7 +25,7 @@ router.put(
   ProductCntroller.productUpdate,
 )
 
-router.get(
+router.post(
   '/upload',
   AdminController.verifyToken,
   AdminController.isAdmin,
