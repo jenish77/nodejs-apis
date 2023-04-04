@@ -7,35 +7,35 @@ const AdminController = require('../apis/AdminController')
 router.post(
   '/register',
   AdminController.verifyToken,
-  AdminController.isAdmin,
+  // AdminController.isAdmin,
   WarehouseController.warehouseRegister,
 )
 
 router.post(
   '/add/:id',
   AdminController.verifyToken,
-  AdminController.isAdmin,
+  // AdminController.isAdmin,
   WarehouseController.warehouseProductadd,
 )
 
 router.post(
   '/transfer',
   AdminController.verifyToken,
-  AdminController.isAdmin,
+  // AdminController.isAdmin,
   WarehouseController.transfer,
 )
 
 router.post(
   '/getProduct',
   AdminController.verifyToken,
-  AdminController.isAdmin,
+  // AdminController.isAdmin,
   WarehouseController.getProduct,
 )
 
 router.post(
   '/product',
   AdminController.verifyToken,
-  AdminController.isAdmin,
+  // AdminController.isAdmin,
   WarehouseController.product,
 )
 

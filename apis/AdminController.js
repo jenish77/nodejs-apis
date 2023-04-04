@@ -1,5 +1,7 @@
 const Admin = require('../models/Admin')
 const Product = require('../models/Product')
+const Role = require('../models/Role')
+const Userroles = require('../models/Userrole')
 const User = require('../models/User')
 const Category = require('../models/Category')
 const Image = require('../models/image')
@@ -7,10 +9,28 @@ const multer = require('multer')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 const Validator = require('validatorjs')
+const apiResponse = require('../response')
+const { default: mongoose } = require('mongoose')
+
+// function isAdmin(role) {
+//   return (req, res, next) => {
+//     const admin = req.params.role
+//     console.log('123456', admin)
+//     // function isAdmin(options) {
+//     console.log('bahar admin')
+//     if ('admin') {
+//       console.log('inside admin')
+//       next()
+//     } else {
+//       res.json({ message: 'tane permission nathi' })
+//     }
+//   }
+// }
 
 const register = async (req, res, next) => {
   try {
     const { name, email, password } = req.body
+    const roleId = req.params.id
 
     const data = {
       name: name,
@@ -24,6 +44,7 @@ const register = async (req, res, next) => {
         'required',
         'regex:/^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{6,16}$/',
       ],
+      // role: 'required|string',
     }
     const validator = new Validator(data, rules)
 
@@ -52,6 +73,7 @@ const register = async (req, res, next) => {
         name: req.body.name,
         email: req.body.email,
         password: req.body.password,
+        roleId: roleId,
       })
       const res_ = await admin.save()
       // console.log(res_)
@@ -61,7 +83,6 @@ const register = async (req, res, next) => {
       }
 
       return res.json(apiResponse(obj))
-      // res.json({ message: 'admin succesfully registered' })
     }
   } catch (error) {
     res.json({ message: 'error occured in register admin-' + error.message })
@@ -69,15 +90,18 @@ const register = async (req, res, next) => {
 }
 
 //check admin
-const isAdmin = async (req, res, next) => {
-  if (req.headers.role === 'admin') {
-    // console.log(req.headers.role)
-    next()
-  } else {
-    console.log()
-    res.status(403).send({ message: 'Access denied, user must be an admin' })
-  }
-}
+
+// module.exports = function isAdmin(options) {}
+
+// const isAdmin = async (req, res, next) => {
+//   if (req.headers.role === 'user') {
+//     console.log('req.headers.role', req.headers.role)
+//     next()
+//   } else {
+//     console.log()
+//     res.status(403).send({ message: 'Access denied, user must be an admin' })
+//   }
+// }
 
 const login = async (req, res, next) => {
   const { email, password } = req.body
@@ -106,11 +130,10 @@ const login = async (req, res, next) => {
     return res.json(apiResponse(responseObject))
   }
 
-  // if (!email || !password) {
-  //   throw new Error('email or password is required')
-  // }
   const checkEmail = await Admin.findOne({ email: email })
-  // if (!checkEmail) throw new Error('email is not register with db')
+
+  // console.log(checkEmail)
+
   if (!checkEmail) {
     return res.json({ message: 'email is not register with db ' })
   }
@@ -143,11 +166,15 @@ const verifyToken = (req, res, next) => {
         res.json({
           message: 'Unauthorize Access! ' + err.message,
         })
-        // next()
       } else {
         req.headers.userid = authData.userId
         req.headers.role = authData.role
         next()
+
+        // if (req.headers.role !== 'admin') {
+        //   return res.json({ message: 'Access denied, user must be an admin' })
+        // } else {
+        // }
       }
     })
   }
@@ -161,6 +188,7 @@ const show = async (req, res, next) => {
 
   try {
     const show = await Admin.findById(adminId)
+
     res.send({
       name: show.name,
       email: show.email,
@@ -172,16 +200,58 @@ const show = async (req, res, next) => {
 
 const destroy = async (req, res, next) => {
   const aid = req.params.id
-  console.log(aid)
+
   const data = await User.findByIdAndDelete(aid)
   res.json({ message: 'deleted' })
+}
+
+const getProfile = async (req, res, next) => {
+  let userId = req.headers.userid
+  const data = await Admin.aggregate([
+    {
+      $match: { _id: mongoose.Types.ObjectId(userId) },
+    },
+    {
+      $lookup: {
+        from: 'roles',
+        localField: 'roleId',
+        foreignField: '_id',
+        as: 'roleData',
+      },
+    },
+    {
+      $lookup: {
+        from: 'userroles',
+        localField: 'roleData._id',
+        foreignField: 'roleId',
+        as: 'userroleData',
+      },
+    },
+    {
+      $lookup: {
+        from: 'permissions',
+        localField: 'userroleData.permissionId',
+        foreignField: '_id',
+        as: 'permisssionData',
+      },
+    },
+    {
+      $project: {
+        name: '$name',
+        role: '$roleData.role',
+        permission: '$permisssionData.PermissionName',
+      },
+    },
+  ])
+  res.send(data)
 }
 
 module.exports = {
   register,
   login,
   verifyToken,
-  isAdmin,
+  // isAdmin,
   show,
   destroy,
+  getProfile,
 }

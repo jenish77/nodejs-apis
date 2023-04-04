@@ -15,6 +15,8 @@ const bcrypt = require('bcrypt')
 const category = async (req, res, next) => {
   try {
     const { name } = req.body
+    const userId = req.headers.userid
+    // console.log(userId)
 
     const data = {
       name: name,
@@ -38,6 +40,15 @@ const category = async (req, res, next) => {
     }
 
     const categorydata = await Category.findOne({ name: name })
+
+    // const user = await Admin.findOne({ _id: userId })
+
+    // console.log('categorydata', categorydata)
+
+    // if (user.role !== 'superAdmin') {
+    //   return res.json({ message: 'you dont have access to add category' })
+    // }
+
     if (!categorydata) {
       let category = new Category({
         name: req.body.name,

@@ -15,6 +15,7 @@ const adminSchema = new Schema(
     password: {
       type: String,
     },
+    roleId: { type: mongoose.Types.ObjectId, ref: 'Role' },
   },
   { timestamps: true },
 )

@@ -7,28 +7,28 @@ const ProductCntroller = require('../apis/ProductController')
 router.post(
   '/category',
   AdminController.verifyToken,
-  AdminController.isAdmin,
+  // AdminController.isAdmin,
   ProductCntroller.category,
 )
 
 router.post(
   '/add/:id',
   AdminController.verifyToken,
-  AdminController.isAdmin,
+  // AdminController.isAdmin,
   ProductCntroller.product,
 )
 
 router.put(
   '/:id',
   AdminController.verifyToken,
-  AdminController.isAdmin,
+  // AdminController.isAdmin,
   ProductCntroller.productUpdate,
 )
 
 router.post(
   '/upload',
   AdminController.verifyToken,
-  AdminController.isAdmin,
+  // AdminController.isAdmin,
   ProductCntroller.upload,
 )
 
@@ -41,7 +41,7 @@ router.delete(
 router.post(
   '/getProduct',
   AdminController.verifyToken,
-  AdminController.isAdmin,
+  // AdminController.isAdmin,
   ProductCntroller.getProducts,
 )
 

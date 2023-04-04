@@ -15,6 +15,7 @@ const adminRoute = require('./routes/admin')
 const productRoute = require('./routes/Product')
 const WarehouseRoute = require('./routes/Warehouse')
 const OrderRoute = require('./routes/Order')
+const roleRoute = require('./routes/role')
 
 app.use('/api/user', userRoute)
 app.use('/api/post', postRoute)
@@ -23,6 +24,7 @@ app.use('/api/admin', adminRoute)
 app.use('/api/product', productRoute)
 app.use('/api/warehouse', WarehouseRoute)
 app.use('/api/order', OrderRoute)
+app.use('/api/role', roleRoute)
 
 app.use('/image', express.static('public/uploads/'))
 

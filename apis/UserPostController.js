@@ -29,6 +29,7 @@ const register = async (req, res, next) => {
       name: name,
       email: email,
       password: password,
+      // role: role,
     }
     const rules = {
       name: 'required|string',
@@ -150,7 +151,7 @@ const login = async (req, res, next) => {
   // console.log(token)
   // CREATE TOKEN
   jwt.sign(
-    { usrId: checkEmail._id },
+    { usrId: checkEmail._id, role: 'user' },
     secretKey,
     { expiresIn: '1h' },
     (err, token) => {
@@ -158,14 +159,11 @@ const login = async (req, res, next) => {
       if (token) {
         res.cookie('jwt', token, { maxAge: 900000, httpOnly: true })
         // const tokenn = req.cookies.jwt
-        // console.log(tokenn)
+
         res.json({ token })
-        // res.cookie('jwt', token, { maxAge: 900000, httpOnly: true })
       }
     },
   )
-  // const token = req.cookies.jwt
-  // console.log(token)
 }
 
 //------------------------------------------
@@ -185,8 +183,16 @@ const verifyToken = async (req, res, next) => {
       if (err) {
         res.json({ message: 'Invalidate token' + err.message })
       } else {
+        console.log('user suthdata', authData)
         req.headers.userid = authData.usrId
-        next()
+        req.headers.role = authData.role
+
+        if (req.headers.role !== 'user') {
+          return res.json({ message: 'Access denied, user must be an user' })
+        } else {
+          next()
+        }
+        // next()
       }
     })
   } else {
@@ -877,8 +883,16 @@ const countlike = async (req, res, next) => {
 
 const getimage = async (req, res, next) => {
   let postid = req.params.postid
+  console.log(postid)
   //   console.log(postid)
-  let image = await Post.findOne({ postid })
+  let image = await Post.findOne({ _id: postid })
+  // .populate('postimage')
+  // .exec((err, post) => {
+  //   if (err) return console.error(err)
+  //   console.log(post)
+  // })
+  console.log('image', image)
+
   if (!image) {
     return res.json({ message: 'post not found' })
   }
